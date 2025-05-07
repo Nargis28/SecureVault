@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="securePassVaultApp">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Secure Pass Vault</title>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.3/angular.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.3/angular-route.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #fff;
+    }
+
+    a {
+      color: #ffd700;
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    header {
+      background-color: rgba(0,0,0,0.3);
+      padding: 15px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+
+    header h1 {
+      margin: 0;
+      font-weight: 700;
+      font-size: 1.8em;
+      letter-spacing: 2px;
+    }
+
+    nav a {
+      margin-left: 20px;
+      font-weight: 600;
+      font-size: 1.1em;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 40px auto;
+      background: rgba(0,0,0,0.4);
+      padding: 25px 30px;
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.5);
+    }
+
+    input, textarea, select {
+      width: 100%;
+      padding: 10px 12px;
+      margin: 8px 0 16px 0;
+      border-radius: 6px;
+      border: none;
+      font-size: 1em;
+    }
+
+    input[type="password"], input[type="text"], input[type="email"], input[type="date"] {
+      background-color: #eee;
+      color: #333;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    button {
+      background-color: #ffd700;
+      border: none;
+      padding: 12px 20px;
+      font-weight: 700;
+      font-size: 1.1em;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      color: #333;
+    }
+
+    button:hover {
+      background-color: #e6c200;
+    }
+
+    .error {
+      color: #ff6b6b;
+      margin-bottom: 15px;
+      font-weight: 600;
+    }
+
+    .success {
+      color: #90ee90;
+      margin-bottom: 15px;
+      font-weight: 600;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+
+    th, td {
+      padding: 12px 15px;
+      border-bottom: 1px solid #ddd;
+      color: #fff;
+    }
+
+    th {
+      background-color: rgba(255, 215, 0, 0.6);
+      color: #333;
+      text-align: left;
+    }
+
+    tr:hover {
+      background-color: rgba(255, 215, 0, 0.15);
+    }
+
+    footer {
+      text-align: center;
+      padding: 15px 0;
+      margin-top: 40px;
+      font-size: 0.9em;
+      color: #ddd;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        margin: 20px 15px;
+        padding: 20px;
+      }
+
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      nav a {
+        margin-left: 0;
+        margin-right: 15px;
+        display: inline-block;
+        margin-top: 8px;
+      }
+    }
+  </style>
+</head>
+<body ng-controller="MainController">
+
+  <header>
+    <h1>Secure Pass Vault</h1>
+    <nav ng-if="isLoggedIn()">
+      <a href="#!/dashboard">Dashboard</a>
+      <a href="#!/add-password">Add Password</a>
+      <a href="#!/view-passwords">View Passwords</a>
+      <a href="#!/profile">Profile</a>
+      <a href="#!/about">About</a>
+      <a href="" ng-click="logout()">Logout</a>
+    </nav>
+    <nav ng-if="!isLoggedIn()">
+      <a href="#!/login">Login</a>
+      <a href="#!/signup">Sign Up</a>
+      <a href="#!/about">About</a>
+    </nav>
+  </header>
+
+  <div class="container" ng-view></div>
+
+  <footer>
+    &copy; 2025 Secure Pass Vault. All rights reserved.
+  </footer>
+
+  <script>
+    angular.module('securePassVaultApp', ['ngRoute'])
+      .config(['$routeProvider', function($routeProvider) {
+        $routeProvider
+          .when('/login', {
+            template: `
+              <h2>Login</h2>
+              <form ng-submit="login()">
+                <div class="error" ng-if="error">{{error}}</div>
+                <label>Email:</label>
+                <input type="email" ng-model="user.email" required placeholder="Enter your email" />
+                <label>Password:</label>
+                <input type="password" ng-model="user.password" required placeholder="Enter your password" />
+                <button type="submit">Login</button>
+              </form>
+              <p>New user? <a href="#!/signup">Sign up here</a></p>
+            `,
+            controller: 'LoginController'
+          })
+          .when('/signup', {
+            template: `
+              <h2>Sign Up</h2>
+              <form ng-submit="signup()">
+                <div class="error" ng-if="error">{{error}}</div>
+                <div class="success" ng-if="success">{{success}}</div>
+                <label>Name:</label>
+                <input type="text" ng-model="user.name" required placeholder="Your full name" />
+                <label>Email:</label>
+                <input type="email" ng-model="user.email" required placeholder="Your email" />
+                <label>Password:</label>
+                <input type="password" ng-model="user.password" required placeholder="Create a password" />
+                <label>Confirm Password:</label>
+                <input type="password" ng-model="user.confirmPassword" required placeholder="Confirm your password" />
+                <button type="submit">Sign Up</button>
+              </form>
+              <p>Already have an account? <a href="#!/login">Login here</a></p>
+            `,
+            controller: 'SignupController'
+          })
+          .when('/dashboard', {
+            template: `
+              <h2>Welcome, {{currentUser.name}}!</h2>
+              <p>Use the navigation links above to manage your passwords and notes.</p>
+              <div style="margin-top: 30px;">
+                <h3>Your Password Count: {{passwords.length}}</h3>
+                <h3>Upcoming Password Expiry Dates:</h3>
+                <ul>
+                  <li ng-repeat="p in upcomingPasswords">{{p.title}} - {{p.expiryDate | date:'mediumDate'}}</li>
+                  <li ng-if="upcomingPasswords.length === 0">No upcoming expiry dates.</li>
+                </ul>
+              </div>
+            `,
+            controller: 'DashboardController'
+          })
+          .when('/add-password', {
+            template: `
+              <h2>Add New Password</h2>
+              <form ng-submit="addPassword()">
+                <div class="error" ng-if="error">{{error}}</div>
+                <div class="success" ng-if="success">{{success}}</div>
+                <label>Title (e.g., Gmail, Facebook):</label>
+                <input type="text" ng-model="password.title" required placeholder="Password title" />
+                <label>Password:</label>
+                <input type="password" ng-model="password.password" required placeholder="Enter password" />
+                <label>Notes:</label>
+                <textarea ng-model="password.notes" placeholder="Any related notes"></textarea>
+                <label>Expiry Date (optional):</label>
+                <input type="date" ng-model="password.expiryDate" />
+                <button type="submit">Save Password</button>
+              </form>
+            `,
+            controller: 'AddPasswordController'
+          })
+          .when('/view-passwords', {
+            template: `
+              <h2>Your Saved Passwords</h2>
+              <div ng-if="passwords.length === 0">You have no saved passwords.</div>
+              <table ng-if="passwords.length > 0">
+                <thead>
+                  <tr>
+                    <th>Title</th>
+                    <th>Password</th>
+                    <th>Notes</th>
+                    <th>Expiry Date</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr ng-repeat="p in passwords">
+                    <td>{{p.title}}</td>
+                    <td>
+                      <input type="{{p.show ? 'text' : 'password'}}" ng-model="p.password" readonly style="border:none; background:none; color:#fff; font-weight:bold;"/>
+                      <button ng-click="toggleVisibility(p)" style="margin-left:5px; font-size:0.9em; padding:2px 6px;">{{p.show ? 'Hide' : 'Show'}}</button>
+                    </td>
+                    <td>{{p.notes || '-'}}</td>
+                    <td>{{p.expiryDate ? (p.expiryDate | date:'mediumDate') : '-'}}</td>
+                    <td>
+                      <button ng-click="deletePassword($index)" style="background:#ff6b6b; color:#fff;">Delete</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            `,
+            controller: 'ViewPasswordsController'
+          })
+          .when('/profile', {
+            template: `
+              <h2>Your Profile</h2>
+              <p><strong>Name:</strong> {{currentUser.name}}</p>
+              <p><strong>Email:</strong> {{currentUser.email}}</p>
+              <button ng-click="changePasswordMode = !changePasswordMode">{{changePasswordMode ? 'Cancel' : 'Change Password'}}</button>
+              <form ng-if="changePasswordMode" ng-submit="changePassword()">
+                <div class="error" ng-if="error">{{error}}</div>
+                <div class="success" ng-if="success">{{success}}</div>
+                <label>Current Password:</label>
+                <input type="password" ng-model="passwords.current" required />
+                <label>New Password:</label>
+                <input type="password" ng-model="passwords.new" required />
+                <label>Confirm New Password:</label>
+                <input type="password" ng-model="passwords.confirm" required />
+                <button type="submit">Update Password</button>
+              </form>
+            `,
+            controller: 'ProfileController'
+          })
+          .when('/about', {
+            template: `
+              <h2>About Secure Pass Vault</h2>
+              <p>This is a mini project created using AngularJS to securely save your passwords along with notes and expiry dates.</p>
+              <p>Features include:</p>
+              <ul>
+                <li>User Sign Up and Login</li>
+                <li>Save passwords with notes and expiry dates</li>
+                <li>View and manage saved passwords</li>
+                <li>Profile management</li>
+                <li>Secure password hiding/showing</li>
+              </ul>
+              <p>All data is stored locally in your browser for demo purposes.</p>
+            `
+          })
+          .otherwise({
+            redirectTo: '/login'
+          });
+      }])
+
+      .run(['$rootScope', '$location', 'AuthService', function($rootScope, $location, AuthService) {
+        $rootScope.$on('$routeChangeStart', function(event, next, current) {
+          const publicPages = ['/login', '/signup', '/about'];
+          const restrictedPage = publicPages.indexOf($location.path()) === -1;
+          if (restrictedPage && !AuthService.isLoggedIn()) {
+            $location.path('/login');
+          }
+        });
+      }])
+
+      .factory('AuthService', ['$window', function($window) {
+        const storageKey = 'securePassVaultUsers';
+        let currentUser = null;
+
+        function loadUsers() {
+          const users = $window.localStorage.getItem(storageKey);
+          return users ? JSON.parse(users) : [];
+        }
+
+        function saveUsers(users) {
+          $window.localStorage.setItem(storageKey, JSON.stringify(users));
+        }
+
+        return {
+          signup: function(user) {
+            let users = loadUsers();
+            if (users.find(u => u.email === user.email)) {
+              return { success: false, message: 'Email already registered.' };
+            }
+            user.password = btoa(user.password);
+            user.passwords = [];
+            users.push(user);
+            saveUsers(users);
+            return { success: true };
+          },
+          login: function(email, password) {
+            let users = loadUsers();
+            let user = users.find(u => u.email === email);
+            if (!user) {
+              return { success: false, message: 'User not found.' };
+            }
+            if (user.password !== btoa(password)) {
+              return { success: false, message: 'Incorrect password.' };
+            }
+            currentUser = user;
+            return { success: true, user: user };
+          },
+          logout: function() {
+            currentUser = null;
+          },
+          isLoggedIn: function() {
+            return currentUser !== null;
+          },
+          getCurrentUser: function() {
+            return currentUser;
+          },
+          updateCurrentUser: function(user) {
+            let users = loadUsers();
+            let idx = users.findIndex(u => u.email === user.email);
+            if (idx !== -1) {
+              users[idx] = user;
+              saveUsers(users);
+              currentUser = user;
+            }
+          }
+        };
+      }])
+
+      .controller('MainController', ['$scope', '$location', 'AuthService', function($scope, $location, AuthService) {
+        $scope.isLoggedIn = AuthService.isLoggedIn;
+
+        $scope.logout = function() {
+          AuthService.logout();
+          $location.path('/login');
+        };
+      }])
+
+      .controller('SignupController', ['$scope', '$location', 'AuthService', function($scope, $location, AuthService) {
+        $scope.user = {};
+        $scope.error = '';
+        $scope.success = '';
+
+        $scope.signup = function() {
+          $scope.error = '';
+          $scope.success = '';
+
+          if ($scope.user.password !== $scope.user.confirmPassword) {
+            $scope.error = "Passwords do not match.";
+            return;
+          }
+
+          let result = AuthService.signup($scope.user);
+          if (result.success) {
+            $scope.success = "Signup successful! You can now login.";
+            $scope.user = {};
+          } else {
+            $scope.error = result.message;
+          }
+        };
+      }])
+
+      .controller('LoginController', ['$scope', '$location', 'AuthService', function($scope, $location, AuthService) {
+        $scope.user = {};
+        $scope.error = '';
+
+        $scope.login = function() {
+          $scope.error = '';
+          let result = AuthService.login($scope.user.email, $scope.user.password);
+          if (result.success) {
+            $location.path('/dashboard');
+          } else {
+            $scope.error = result.message;
+          }
+        };
+      }])
+
+      .controller('DashboardController', ['$scope', 'AuthService', function($scope, AuthService) {
+        $scope.currentUser = AuthService.getCurrentUser();
+        $scope.passwords = $scope.currentUser.passwords || [];
+
+        const today = new Date();
+        const in30Days = new Date();
+        in30Days.setDate(today.getDate() + 30);
+
+        $scope.upcomingPasswords = $scope.passwords.filter(p => {
+          if (!p.expiryDate) return false;
+          let d = new Date(p.expiryDate);
+          return d >= today && d <= in30Days;
+        });
+      }])
+
+      .controller('AddPasswordController', ['$scope', 'AuthService', function($scope, AuthService) {
+        $scope.password = {};
+        $scope.error = '';
+        $scope.success = '';
+
+        $scope.addPassword = function() {
+          $scope.error = '';
+          $scope.success = '';
+
+          if (!$scope.password.title || !$scope.password.password) {
+            $scope.error = 'Title and Password are required.';
+            return;
+          }
+
+          let user = AuthService.getCurrentUser();
+          if (!user.passwords) user.passwords = [];
+
+          if ($scope.password.expiryDate) {
+            let d = new Date($scope.password.expiryDate);
+            $scope.password.expiryDate = d.toISOString().split('T')[0];
+          }
+
+          $scope.password.show = false;
+
+          user.passwords.push(angular.copy($scope.password));
+          AuthService.updateCurrentUser(user);
+
+          $scope.success = 'Password saved successfully!';
+          $scope.password = {};
+        };
+      }])
+
+      .controller('ViewPasswordsController', ['$scope', 'AuthService', function($scope, AuthService) {
+        let user = AuthService.getCurrentUser();
+        $scope.passwords = user.passwords || [];
+
+        $scope.toggleVisibility = function(p) {
+          p.show = !p.show;
+        };
+
+        $scope.deletePassword = function(index) {
+          if (confirm('Are you sure you want to delete this password?')) {
+            $scope.passwords.splice(index, 1);
+            AuthService.updateCurrentUser(AuthService.getCurrentUser());
+          }
+        };
+      }])
+
+      .controller('ProfileController', ['$scope', 'AuthService', function($scope, AuthService) {
+        $scope.currentUser = AuthService.getCurrentUser();
+        $scope.changePasswordMode = false;
+        $scope.passwords = {};
+        $scope.error = '';
+        $scope.success = '';
+
+        $scope.changePassword = function() {
+          $scope.error = '';
+          $scope.success = '';
+
+          if (!$scope.passwords.current || !$scope.passwords.new || !$scope.passwords.confirm) {
+            $scope.error = 'All fields are required.';
+            return;
+          }
+
+          if ($scope.passwords.new !== $scope.passwords.confirm) {
+            $scope.error = 'New passwords do not match.';
+            return;
+          }
+
+          if (btoa($scope.passwords.current) !== $scope.currentUser.password) {
+            $scope.error = 'Current password is incorrect.';
+            return;
+          }
+
+          $scope.currentUser.password = btoa($scope.passwords.new);
+          AuthService.updateCurrentUser($scope.currentUser);
+          $scope.success = 'Password updated successfully!';
+          $scope.passwords = {};
+          $scope.changePasswordMode = false;
+        };
+      }]);
+  </script>
+</body>
+</html>
